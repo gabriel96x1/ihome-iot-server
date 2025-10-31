@@ -1,3 +1,3 @@
-pub(crate) fn setup_mqtt_client() {
+pub fn setup_mqtt_client() {
 
 }
