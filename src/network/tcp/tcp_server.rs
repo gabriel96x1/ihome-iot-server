@@ -2,12 +2,12 @@ use std::net::SocketAddr;
 use axum::Router;
 use axum::routing::get;
 use tokio::net::TcpListener;
-use crate::network::tcp::websocket::ws_service::handle_ws_communication;
+use crate::network::tcp::websocket::ws_service::ws_communication;
 
 pub async fn run_tcp_server() {
     let app = Router::new()
         .route("/health", get(health_check))
-        .route("/ws/communication", get(handle_ws_communication));
+        .route("/ws/communication", get(ws_communication));
 
     let addr = SocketAddr::from(([127, 0, 0, 1], 9000));
 
