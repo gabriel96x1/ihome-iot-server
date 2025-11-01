@@ -22,7 +22,7 @@ pub async fn init_services() {
     });
 
     tokio::spawn(async {
-        send_udp_message("holiwis desde el server", "127.0.0.1:8081").await;
+        send_udp_message("holiwis desde el server", "0.0.0.0:8081").await;
     });
 
     tokio::spawn(async {

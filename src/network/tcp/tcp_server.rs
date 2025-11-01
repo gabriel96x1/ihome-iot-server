@@ -1,6 +1,7 @@
 use std::net::SocketAddr;
 use axum::Router;
 use axum::routing::get;
+use local_ip_address::local_ip;
 use tokio::net::TcpListener;
 use crate::network::tcp::websocket::ws_service::ws_communication;
 
@@ -9,9 +10,10 @@ pub async fn run_tcp_server() {
         .route("/health", get(health_check))
         .route("/ws/communication", get(ws_communication));
 
-    let addr = SocketAddr::from(([127, 0, 0, 1], 9000));
+    let addr = SocketAddr::from(([0, 0, 0, 0], 9000));
 
-    println!("Web Server running at: {}", addr);
+    let ip = local_ip();
+    println!("Web Server running at: {}", ip.unwrap());
 
     let listener = TcpListener::bind(addr)
         .await

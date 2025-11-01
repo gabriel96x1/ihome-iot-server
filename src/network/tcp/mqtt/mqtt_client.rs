@@ -14,7 +14,7 @@ impl MqttClient {
     async fn instance() -> &'static Self {
         MQTT_CLIENT
             .get_or_init(|| async {
-                let mqttoptions = MqttOptions::new("local-client-server", "localhost", 1883);
+                let mqttoptions = MqttOptions::new("local-client-server", "0.0.0.0", 1883);
                 let (client, mut eventloop) = AsyncClient::new(mqttoptions, 10);
                 let (tx, _rx) = broadcast::channel(32);
 
