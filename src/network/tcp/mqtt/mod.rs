@@ -1,2 +1,2 @@
 pub mod mqtt_client;
-pub mod mqtt_service;
+pub mod mqtt_broker;

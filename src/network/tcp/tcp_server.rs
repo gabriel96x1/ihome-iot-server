@@ -11,6 +11,8 @@ pub async fn run_tcp_server() {
 
     let addr = SocketAddr::from(([127, 0, 0, 1], 9000));
 
+    println!("Web Server running at: {}", addr);
+
     let listener = TcpListener::bind(addr)
         .await
         .unwrap();
@@ -18,8 +20,6 @@ pub async fn run_tcp_server() {
     if let Err(e) = axum::serve(listener, app).await {
         println!("Server error: {e}");
     }
-
-    println!("Web Server running at: {}", addr);
 }
 
 async fn health_check() -> &'static str {
