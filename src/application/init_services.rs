@@ -1,4 +1,6 @@
+use std::time::Duration;
 use crate::network::tcp::mqtt::mqtt_broker::run_mqtt_broker;
+use crate::network::tcp::mqtt::mqtt_client::MqttClient;
 use crate::network::tcp::tcp_server::run_tcp_server;
 use crate::network::udp::udp_client::send_udp_message;
 use crate::network::udp::udp_server::run_udp_server;
@@ -23,6 +25,15 @@ pub async fn init_services() {
         send_udp_message("holiwis desde el server", "127.0.0.1:8081").await;
     });
 
+    tokio::spawn(async {
+        tokio::time::sleep(Duration::from_secs(1)).await;
+        MqttClient::subscribe_to_mqtt_topic("test").await;
+        let mut rx = MqttClient::subscribe_to_mqtt_events().await;
+        loop {
+            let event = rx.recv().await.unwrap();
+            println!("MQTT event subscriber: {:?}", event);
+        }
+    });
 }
 
 const BANNER: &str = "
