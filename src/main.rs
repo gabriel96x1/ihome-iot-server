@@ -2,7 +2,7 @@ use crate::application::init_services::init_services;
 
 mod domain;
 mod application;
-pub mod network;
+mod network;
 mod rag;
 mod tts;
 mod stt;

@@ -1,5 +1,6 @@
 use crate::network::tcp::mqtt::mqtt_broker::run_mqtt_broker;
 use crate::network::tcp::tcp_server::run_tcp_server;
+use crate::network::udp::udp_client::send_udp_message;
 use crate::network::udp::udp_server::run_udp_server;
 
 pub async fn init_services() {
@@ -16,6 +17,10 @@ pub async fn init_services() {
 
     tokio::spawn( async {
         run_tcp_server().await;
+    });
+
+    tokio::spawn( async {
+        send_udp_message("holiwis desde el server", "127.0.0.1:8081").await;
     });
 
 }
