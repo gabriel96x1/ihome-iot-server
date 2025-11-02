@@ -5,8 +5,6 @@ set -euo pipefail
 LOG="output.log"
 PID_FILE="output.pid"
 
-CMD=(nohup cargo watch -x run --ignore "$LOG" > "$LOG" 2>&1 &)
-
 start() {
   if [[ -f "$PID_FILE" ]] && kill -0 "$(cat "$PID_FILE")" 2>/dev/null; then
     echo "Already running (pid $(cat "$PID_FILE"))."
