@@ -5,7 +5,8 @@ use std::time::Duration;
 use axum::extract::ws::{Message, WebSocket};
 use sha2::{Digest, Sha256};
 use tokio::net::UdpSocket;
-use tokio::sync::Mutex;
+use tokio::select;
+use tokio::sync::{watch, Mutex};
 use tokio::task::JoinHandle;
 use crate::sound::wav_utils::save_wav;
 
@@ -36,24 +37,36 @@ async fn audio_receiver(
     udp_socket: Arc<UdpSocket>,
     audio_data: Arc<Mutex<Vec<i16>>>,
     client_addr: SocketAddr,
-    recording_flag: Arc<AtomicBool>
+    mut stop_rx: watch::Receiver<bool>,
 ) {
     let mut buf = [0u8; 1024];
 
-    while recording_flag.load(Ordering::SeqCst) {
-        match udp_socket.recv_from(&mut buf).await {
-            Ok((len, udp_addr)) => {
-                if udp_addr.ip() == client_addr.ip() {
-                    let mut audio = audio_data.lock().await;
-                    for chunk in buf[..len].chunks_exact(2) {
-                        let sample = i16::from_le_bytes([chunk[0], chunk[1]]);
-                        audio.push(sample);
-                    }
+    loop {
+        select! {
+            biased;
+            _ = stop_rx.changed() => {
+                if *stop_rx.borrow() {
+                    println!("top signal received for {}", client_addr);
+                    break;
                 }
             }
-            Err(e) => {
-                eprintln!("UDP recv error: {:?}", e);
-                tokio::time::sleep(Duration::from_millis(10)).await;
+
+            recv_result = udp_socket.recv_from(&mut buf) => {
+                match recv_result {
+                    Ok((len, udp_addr)) => {
+                        if udp_addr.ip() == client_addr.ip() {
+                            let mut audio = audio_data.lock().await;
+                            for chunk in buf[..len].chunks_exact(2) {
+                                let sample = i16::from_le_bytes([chunk[0], chunk[1]]);
+                                audio.push(sample);
+                            }
+                        }
+                    }
+                    Err(e) => {
+                        eprintln!("UDP recv error: {:?}", e);
+                        tokio::time::sleep(Duration::from_millis(10)).await;
+                    }
+                }
             }
         }
     }
@@ -67,7 +80,7 @@ async fn recording_session_controller(
 ) {
 
     let audio_data = Arc::new(Mutex::new(Vec::<i16>::new()));
-    let recording_flag = Arc::new(AtomicBool::new(false));
+    let (stop_tx, stop_rx) = watch::channel(false);
     let mut recording_task: Option<JoinHandle<()>> = None;
 
     while let Some(msg) = ws.recv().await {
@@ -80,23 +93,19 @@ async fn recording_session_controller(
                     let message = text_clone.as_str();
                     match message {
                         "start_recording" => {
-
-                            println!("Start recording from {}", client_addr);
-                            recording_flag.store(true, Ordering::SeqCst);
+                            println!("🎙️ Start recording from {}", client_addr);
 
                             let udp_socket = udp_socket.clone();
                             let audio_data = audio_data.clone();
-                            let recording_flag = recording_flag.clone();
+                            let stop_rx = stop_rx.clone();
                             let client_addr = client_addr.clone();
 
-                            if recording_task.is_none() {
-                                recording_task = Some(tokio::spawn(async move {
-                                    audio_receiver(udp_socket, audio_data, client_addr, recording_flag).await;
-                                }));
-                            }
+                            recording_task = Some(tokio::spawn(async move {
+                                audio_receiver(udp_socket, audio_data, client_addr, stop_rx).await;
+                            }));
                         }
                         "stop_recording" => {
-                            recording_flag.store(false, Ordering::SeqCst);
+                            let _ = stop_tx.send(true);
 
                             if let Some(task) = recording_task.take() {
                                 let _ = task.await;
@@ -106,9 +115,7 @@ async fn recording_session_controller(
                             println!("Captured {} samples", samples.len());
                             save_wav(audio_path, &samples);
                         }
-                        _ => {
-                            println!("Unknown message: {}", message);
-                        }
+                        _ => println!("Unknown message: {}", text),
                     }
 
                     if ws.send(Message::Text(format!("You sent: {}", text).into())).await.is_err() {
