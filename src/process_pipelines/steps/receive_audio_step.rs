@@ -40,6 +40,7 @@ async fn audio_receiver(
     loop {
         match udp_socket.recv_from(&mut buf).await {
             Ok((len, udp_addr)) => {
+                println!("Received {} bytes from {}, ws address {}", len, udp_addr, client_addr);
                 if udp_addr.ip() == client_addr.ip() {
                     let chunk: &[u8] = &buf[..len];
                     let mut samples = audio_data.lock().await.clone();
