@@ -99,6 +99,7 @@ async fn recording_session_controller(
                                 let _ = task.await;
                             }
                             let samples = audio_data.lock().await.clone();
+                            println!("Captured {} samples", samples.len());
                             save_wav(audio_path, &samples);
                         }
                         _ => {
