@@ -60,7 +60,7 @@ impl MqttClient {
     /// - Connects to the MQTT broker at `0.0.0.0:1883` using client ID `local-client-server`.
     /// - Starts an MQTT event loop in a background task.
     /// - Sets up a broadcast channel to forward all MQTT events.
-    async fn instance() -> &'static Self {
+    pub async fn instance() -> &'static Self {
         MQTT_CLIENT
             .get_or_init(|| async {
                 // Basic client configuration

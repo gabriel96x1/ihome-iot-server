@@ -1,44 +1,17 @@
-use axum::extract::WebSocketUpgrade;
-use axum::extract::ws::{Message, WebSocket};
+use std::net::SocketAddr;
+use axum::extract::{ConnectInfo, WebSocketUpgrade};
+use axum::extract::ws::WebSocket;
 use axum::response::Response;
+use crate::orchestration::incoming_communication_orchestrator::IncomingCommunicationOrchestrator;
 
-pub async fn ws_communication(ws: WebSocketUpgrade) -> Response {
-    ws.on_upgrade(handle_ws_socket)
+pub async fn handle_ws_incoming_communication(ws: WebSocketUpgrade, ConnectInfo(addr): ConnectInfo<SocketAddr>) -> Response {
+    ws.on_upgrade(move |socket| handle_ws_socket(socket, addr))
 }
 
-async fn handle_ws_socket(mut socket: WebSocket) {
-    while let Some(msg) = socket.recv().await {
-        if let Ok(msg) = msg {
-            match msg {
-                Message::Text(t) => {
-                    println!("client sent str: {:?}", t);
-                    if socket.send(Message::Text(format!("You sent: {}", t).into())).await.is_err() {
-                        println!("client disconnected");
-                        return;
-                    }
-                }
-                Message::Binary(b) => {
-                    println!("client sent binary: {:?}", b);
-                    if socket.send(Message::Binary(b)).await.is_err() {
-                        println!("client disconnected");
-                        return;
-                    }
-                }
-                Message::Ping(p) => {
-                    println!("client sent ping: {:?}", p);
-                }
-                Message::Pong(p) => {
-                    println!("client sent pong: {:?}", p);
-                }
-                Message::Close(c) => {
-                    println!("client sent close: {:?}", c);
-                    return;
-                }
-            }
-        } else {
-            println!("client disconnected");
-            return;
-        }
-    }
+async fn handle_ws_socket(socket: WebSocket, addr: SocketAddr) {
+
+    let mut communication_orchestrator = IncomingCommunicationOrchestrator::new().await;
+
+    communication_orchestrator.orchestrate(socket, addr).await;
 
 }

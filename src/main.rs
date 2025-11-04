@@ -8,6 +8,10 @@ mod tts;
 mod stt;
 mod web_search;
 mod llm;
+mod sound;
+mod orchestration;
+mod process_pipelines;
+mod strategies;
 
 #[tokio::main]
 async fn main() {

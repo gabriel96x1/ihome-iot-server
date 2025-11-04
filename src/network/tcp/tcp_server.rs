@@ -3,12 +3,13 @@ use axum::Router;
 use axum::routing::get;
 use local_ip_address::local_ip;
 use tokio::net::TcpListener;
-use crate::network::tcp::websocket::ws_service::ws_communication;
+use crate::network::tcp::websocket::ws_service::handle_ws_incoming_communication;
 
 pub async fn run_tcp_server() {
     let app = Router::new()
         .route("/health", get(health_check))
-        .route("/ws/communication", get(ws_communication));
+        .route("/ws/incoming_communication", get(handle_ws_incoming_communication))
+        .into_make_service_with_connect_info::<SocketAddr>();
 
     let addr = SocketAddr::from(([0, 0, 0, 0], 9000));
 
