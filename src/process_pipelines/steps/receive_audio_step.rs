@@ -43,19 +43,16 @@ async fn audio_receiver(
     while recording_flag.load(Ordering::SeqCst) {
         match udp_socket.recv_from(&mut buf).await {
             Ok((len, udp_addr)) => {
-                println!("Received {} bytes from {}, ws address {}", len, udp_addr, client_addr);
                 if udp_addr.ip() == client_addr.ip() {
-                    let chunk: &[u8] = &buf[..len];
-                    let mut samples = audio_data.lock().await.clone();
-
-                    for chunk in chunk.chunks_exact(2) {
+                    let mut audio = audio_data.lock().await;
+                    for chunk in buf[..len].chunks_exact(2) {
                         let sample = i16::from_le_bytes([chunk[0], chunk[1]]);
-                        samples.push(sample);
+                        audio.push(sample);
                     }
                 }
             }
             Err(e) => {
-                eprintln!("Error receiving UDP packet: {:?}", e);
+                eprintln!("UDP recv error: {:?}", e);
                 tokio::time::sleep(Duration::from_millis(10)).await;
             }
         }
@@ -68,16 +65,14 @@ async fn recording_session_controller(
     client_addr: SocketAddr,
     audio_path: &str
 ) {
+
+    let audio_data = Arc::new(Mutex::new(Vec::<i16>::new()));
+    let recording_flag = Arc::new(AtomicBool::new(false));
+    let mut recording_task: Option<JoinHandle<()>> = None;
+
     while let Some(msg) = ws.recv().await {
 
-        let recording_flag = Arc::new(AtomicBool::new(false));
-        let mut recording_task: Option<JoinHandle<()>> = None;
-
         if let Ok(msg) = msg {
-
-            let audio_data = Arc::new(Mutex::new(Vec::<i16>::new()));
-            let audio_data_clone = audio_data.clone();
-
             match msg {
                 Message::Text(text) => {
                     println!("client sent str: {:?}", text);
@@ -103,7 +98,7 @@ async fn recording_session_controller(
                             if let Some(task) = recording_task.take() {
                                 let _ = task.await;
                             }
-                            let samples = audio_data_clone.lock().await.clone();
+                            let samples = audio_data.lock().await.clone();
                             save_wav(audio_path, &samples);
                         }
                         _ => {
