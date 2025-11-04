@@ -1,3 +1,4 @@
+use std::sync::Arc;
 use axum::extract::ws::WebSocket;
 use tokio::net::UdpSocket;
 use crate::network::tcp::mqtt::mqtt_client::MqttClient;
@@ -5,7 +6,7 @@ use crate::network::udp::udp_socket::get_udp_socket;
 use crate::process_pipelines::intention_recognition_pipeline::intention_recognition_pipeline;
 
 pub struct IncomingCommunicationOrchestrator<'a> {
-    udp_socket: &'a UdpSocket,
+    udp_socket: Arc<UdpSocket>,
     mqtt_client: &'a MqttClient,
 }
 impl<'a> IncomingCommunicationOrchestrator<'a> {
@@ -20,7 +21,7 @@ impl<'a> IncomingCommunicationOrchestrator<'a> {
     }
 
     pub async fn orchestrate(&mut self, ws: WebSocket, client_addr: std::net::SocketAddr) {
-        intention_recognition_pipeline(self.udp_socket, ws, client_addr).await;
+        intention_recognition_pipeline(self.udp_socket.clone(), ws, client_addr).await;
     }
 
 }

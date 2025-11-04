@@ -1,13 +1,15 @@
 use std::net::SocketAddr;
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
 use axum::extract::ws::{Message, WebSocket};
 use sha2::{Digest, Sha256};
 use tokio::net::UdpSocket;
 use tokio::sync::Mutex;
+use tokio::task::JoinHandle;
 use crate::sound::wav_utils::save_wav;
 
-pub async fn receive_audio_step(udp_socket: &UdpSocket, ws: WebSocket, client_addr: SocketAddr) -> String {
+pub async fn receive_audio_step(udp_socket: Arc<UdpSocket>, ws: WebSocket, client_addr: SocketAddr) -> String {
 
     let audio_path = generate_audio_path_from(client_addr);
     let audio_path_clone = audio_path.clone();
@@ -31,13 +33,14 @@ fn generate_audio_path_from(client_addr: SocketAddr) -> String {
 }
 
 async fn audio_receiver(
-    udp_socket: &UdpSocket,
+    udp_socket: Arc<UdpSocket>,
     audio_data: Arc<Mutex<Vec<i16>>>,
-    client_addr: SocketAddr
+    client_addr: SocketAddr,
+    recording_flag: Arc<AtomicBool>
 ) {
     let mut buf = [0u8; 1024];
 
-    loop {
+    while recording_flag.load(Ordering::SeqCst) {
         match udp_socket.recv_from(&mut buf).await {
             Ok((len, udp_addr)) => {
                 println!("Received {} bytes from {}, ws address {}", len, udp_addr, client_addr);
@@ -60,12 +63,16 @@ async fn audio_receiver(
 }
 
 async fn recording_session_controller(
-    udp_socket: &UdpSocket,
+    udp_socket: Arc<UdpSocket>,
     mut ws: WebSocket,
     client_addr: SocketAddr,
     audio_path: &str
 ) {
     while let Some(msg) = ws.recv().await {
+
+        let recording_flag = Arc::new(AtomicBool::new(false));
+        let mut recording_task: Option<JoinHandle<()>> = None;
+
         if let Ok(msg) = msg {
 
             let audio_data = Arc::new(Mutex::new(Vec::<i16>::new()));
@@ -78,11 +85,26 @@ async fn recording_session_controller(
                     let message = text_clone.as_str();
                     match message {
                         "start_recording" => {
-                            //audio_receiver(udp_socket, audio_data, client_addr).await;
+
+                            println!("🎙️ Start recording from {}", client_addr);
+                            recording_flag.store(true, Ordering::SeqCst);
+
+                            let udp_socket = udp_socket.clone();
+                            let audio_data = audio_data.clone();
+                            let recording_flag = recording_flag.clone();
+                            let client_addr = client_addr.clone();
+
+                            recording_task = Some(tokio::spawn(async move {
+                                audio_receiver(udp_socket, audio_data, client_addr, recording_flag).await;
+                            }));
                         }
                         "stop_recording" => {
-                            //let samples = audio_data_clone.lock().await.clone();
-                            //save_wav(audio_path, &samples);
+                            recording_flag.store(false, Ordering::SeqCst);
+                            if let Some(task) = recording_task.take() {
+                                let _ = task.await;
+                            }
+                            let samples = audio_data_clone.lock().await.clone();
+                            save_wav(audio_path, &samples);
                         }
                         _ => {
                             println!("Unknown message: {}", message);
