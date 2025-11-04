@@ -81,7 +81,7 @@ async fn recording_session_controller(
                     match message {
                         "start_recording" => {
 
-                            println!("🎙️ Start recording from {}", client_addr);
+                            println!("Start recording from {}", client_addr);
                             recording_flag.store(true, Ordering::SeqCst);
 
                             let udp_socket = udp_socket.clone();
@@ -89,15 +89,19 @@ async fn recording_session_controller(
                             let recording_flag = recording_flag.clone();
                             let client_addr = client_addr.clone();
 
-                            recording_task = Some(tokio::spawn(async move {
-                                audio_receiver(udp_socket, audio_data, client_addr, recording_flag).await;
-                            }));
+                            if recording_task.is_none() {
+                                recording_task = Some(tokio::spawn(async move {
+                                    audio_receiver(udp_socket, audio_data, client_addr, recording_flag).await;
+                                }));
+                            }
                         }
                         "stop_recording" => {
                             recording_flag.store(false, Ordering::SeqCst);
+
                             if let Some(task) = recording_task.take() {
                                 let _ = task.await;
                             }
+
                             let samples = audio_data.lock().await.clone();
                             println!("Captured {} samples", samples.len());
                             save_wav(audio_path, &samples);
