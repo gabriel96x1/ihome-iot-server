@@ -1,4 +1,4 @@
-/*use tokio::sync::{Mutex, OnceCell};
+use tokio::sync::{Mutex, OnceCell};
 use vosk::{Model, Recognizer};
 use crate::sound::wav_utils::read_wav;
 
@@ -22,4 +22,4 @@ async fn get_speech_recognizer() -> &'static Mutex<Recognizer> {
             let recognizer = Recognizer::new(&model, 16000.0).expect("Failed to create Vosk recognizer");
             Mutex::new(recognizer)
     }).await
-}*/
+}

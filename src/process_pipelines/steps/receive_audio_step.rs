@@ -93,7 +93,7 @@ async fn recording_session_controller(
                     let message = text_clone.as_str();
                     match message {
                         "start_recording" => {
-                            println!("🎙️ Start recording from {}", client_addr);
+                            println!("Start recording from {}", client_addr);
 
                             let udp_socket = udp_socket.clone();
                             let audio_data = audio_data.clone();

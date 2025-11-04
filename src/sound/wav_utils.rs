@@ -1,11 +1,8 @@
 use hound::WavReader;
 
-pub fn read_wav(path: &str) -> Vec<f32> {
+pub fn read_wav(path: &str) -> Vec<i16> {
     let mut reader = WavReader::open(path).expect("Cannot open WAV file");
-    reader
-        .samples::<i16>()
-        .map(|s| s.unwrap() as f32 / i16::MAX as f32)
-        .collect()
+    reader.samples::<i16>().map(|s| s.unwrap()).collect()
 }
 
 pub fn save_wav(path: &str, samples: &[i16]) -> String {
