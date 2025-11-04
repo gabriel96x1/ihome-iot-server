@@ -1,8 +1,8 @@
 [target.aarch64-unknown-linux-gnu]
 rustflags = [
     "-C", "target-feature=+neon,+fp16,+fp16fml",
-    "-C", "link-args=-Wl,-rpath,$ORIGIN/vosk-api/vosk-linux-aarch64",
-    "-L", "vosk-api/vosk-linux-aarch64",
+    "-C", "link-args=-Wl,-rpath,$ORIGIN/vosk-api/vosk-linux-aarch64-0.3.45",
+    "-L", "vosk-api/vosk-linux-aarch64-0.3.45",
 ]
 
 [target.aarch64-apple-darwin]
