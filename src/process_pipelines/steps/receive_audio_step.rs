@@ -78,11 +78,11 @@ async fn recording_session_controller(
                     let message = text_clone.as_str();
                     match message {
                         "start_recording" => {
-                            audio_receiver(udp_socket, audio_data, client_addr).await;
+                            //audio_receiver(udp_socket, audio_data, client_addr).await;
                         }
                         "stop_recording" => {
-                            let samples = audio_data_clone.lock().await.clone();
-                            save_wav(audio_path, &samples);
+                            //let samples = audio_data_clone.lock().await.clone();
+                            //save_wav(audio_path, &samples);
                         }
                         _ => {
                             println!("Unknown message: {}", message);
